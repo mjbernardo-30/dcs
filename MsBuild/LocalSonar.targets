@@ -1,0 +1,64 @@
+<Project>
+  <!--
+    Injected by LocalSonar through the CustomAfterMicrosoftCommonTargets global property.
+    Nothing is written into the scanned repository; this file lives next to LocalSonar.exe.
+
+    Global properties passed in by LocalSonar:
+      LocalSonarOutDir           folder for the per-project SARIF files
+      LocalSonarAnalyzerVersion  SonarAnalyzer.CSharp NuGet version (online mode)
+      LocalSonarAnalyzerDir      folder with SonarAnalyzer.CSharp.dll (offline mode, optional)
+      LocalSonarGlobalConfig     .globalconfig enabling the quality-profile rules (optional)
+      LocalSonarIncludeTests     'true' to also analyze test projects
+  -->
+
+  <PropertyGroup>
+    <_LocalSonarApplies Condition="'$(MSBuildProjectExtension)' == '.csproj' and ('$(IsTestProject)' != 'true' or '$(LocalSonarIncludeTests)' == 'true')">true</_LocalSonarApplies>
+  </PropertyGroup>
+
+  <!-- Like SonarScanner in the pipeline: warnings are reported, never turned into build errors. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <MSBuildTreatWarningsAsErrors>false</MSBuildTreatWarningsAsErrors>
+    <WarningsAsErrors></WarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_LocalSonarApplies)' == 'true'">
+    <RunAnalyzers>true</RunAnalyzers>
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+
+    <!-- One SARIF per project evaluation; the GUID avoids clashes (same project name, multi-targeting). -->
+    <ErrorLog>$([MSBuild]::EnsureTrailingSlash('$(LocalSonarOutDir)'))$(MSBuildProjectName)_$(TargetFramework)_$([System.Guid]::NewGuid().ToString('N')).sarif,version=2.1</ErrorLog>
+
+    <!-- Allow VersionOverride / floating versions when the repo uses Central Package Management. -->
+    <CentralPackageVersionOverrideEnabled Condition="'$(ManagePackageVersionsCentrally)' == 'true'">true</CentralPackageVersionOverrideEnabled>
+    <CentralPackageFloatingVersionsEnabled Condition="'$(ManagePackageVersionsCentrally)' == 'true'">true</CentralPackageFloatingVersionsEnabled>
+  </PropertyGroup>
+
+  <!-- Online mode: add the SonarAnalyzer.CSharp package (replacing any reference the project already has). -->
+  <ItemGroup Condition="'$(_LocalSonarApplies)' == 'true' and '$(LocalSonarAnalyzerDir)' == ''">
+    <PackageReference Remove="SonarAnalyzer.CSharp" />
+    <PackageReference Include="SonarAnalyzer.CSharp"
+                      Version="$(LocalSonarAnalyzerVersion)"
+                      PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers"
+                      Condition="'$(ManagePackageVersionsCentrally)' != 'true'" />
+    <PackageReference Include="SonarAnalyzer.CSharp"
+                      VersionOverride="$(LocalSonarAnalyzerVersion)"
+                      PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers"
+                      Condition="'$(ManagePackageVersionsCentrally)' == 'true'" />
+  </ItemGroup>
+
+  <!-- Offline mode: reference the analyzer dlls directly. -->
+  <ItemGroup Condition="'$(_LocalSonarApplies)' == 'true' and '$(LocalSonarAnalyzerDir)' != ''">
+    <PackageReference Remove="SonarAnalyzer.CSharp" />
+    <Analyzer Include="$(LocalSonarAnalyzerDir)/*.dll" />
+  </ItemGroup>
+
+  <!-- Enable the rules from the company quality profile. Added to EditorConfigFiles directly because
+       the SDK copies GlobalAnalyzerConfigFiles into it before this file is imported. -->
+  <ItemGroup Condition="'$(_LocalSonarApplies)' == 'true' and '$(LocalSonarGlobalConfig)' != ''">
+    <EditorConfigFiles Include="$(LocalSonarGlobalConfig)" />
+  </ItemGroup>
+</Project>

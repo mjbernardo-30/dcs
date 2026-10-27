@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>LocalSonar</AssemblyName>
+    <RootNamespace>LocalSonar</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Only used to tokenize C# for duplication detection (no compilation needed). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="MsBuild\LocalSonar.targets" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="rules.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('rules.json')" />
+  </ItemGroup>
+
+</Project>
